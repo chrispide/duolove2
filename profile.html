@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DuoLove - Perfil</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="profile-container">
+        <div class="navbar">
+            <div class="logo" style="margin: 0; cursor: pointer;" id="logo">
+                <h2 style="font-size: 1.5rem;">Duo<span>Love</span></h2>
+            </div>
+            <div class="nav-links">
+                <a href="index.html">Perfil</a>
+                <a href="stories.html">Historias</a>
+                <a href="#" id="logoutBtn">Cerrar Sesión</a>
+            </div>
+        </div>
+        
+        <div class="profile-header">
+            <h1 class="profile-title" id="profileTitle">Bienvenidos</h1>
+            <p>Su espacio de conexión como pareja</p>
+        </div>
+        
+        <div class="profile-info" id="profileInfo">
+            <div class="avatar-section">
+                <img id="avatarPreview" class="avatar-preview" src="https://via.placeholder.com/120" alt="Avatar">
+                <br>
+                <label for="avatarUpload" class="avatar-btn">
+                    <i class="fas fa-camera"></i> Cambiar Avatar
+                </label>
+                <input type="file" id="avatarUpload" class="avatar-input" accept="image/*">
+            </div>
+            
+            <div class="info-item">
+                <span class="info-label">Correo electrónico:</span>
+                <span class="info-value" id="userEmail"></span>
+            </div>
+            
+            <div class="info-item" id="coupleNameItem">
+                <span class="info-label">Nombre de pareja:</span>
+                <span class="info-value" id="coupleName"></span>
+                <input type="text" id="editCoupleName" class="edit-input">
+            </div>
+            
+            <div class="info-item" id="relationshipItem">
+                <span class="info-label">Tipo de relación:</span>
+                <span class="info-value" id="relationshipType"></span>
+                <select id="editRelationshipType" class="edit-input">
+                    <option value="standard">Relación romántica</option>
+                    <option value="writing">Pareja de escritura</option>
+                </select>
+            </div>
+            
+            <div class="info-item">
+                <span class="info-label">Miembro desde:</span>
+                <span id="joinDate"></span>
+            </div>
+            
+            <div class="info-item">
+                <span class="info-label">Días juntos:</span>
+                <span id="daysTogether"></span>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="editProfileBtn" class="btn" style="flex: 1;">✏️ Editar Perfil</button>
+                <button id="saveProfileBtn" class="btn btn-secondary" style="flex: 1; display: none;">💾 Guardar Cambios</button>
+            </div>
+        </div>
+        
+        <div id="resetDemo" style="display: none; margin-top: 20px; text-align: center;">
+            <button id="resetAllBtn" style="background-color: var(--danger); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+                🗑️ Restablecer Demo (Borrar todos los datos)
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let clickCount = 0;
+        let clickTimeout;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+            
+            if (!currentUser) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // Mostrar datos del usuario
+            document.getElementById('profileTitle').textContent = currentUser.coupleName;
+            document.getElementById('userEmail').textContent = currentUser.email;
+            document.getElementById('coupleName').textContent = currentUser.coupleName;
+            document.getElementById('editCoupleName').value = currentUser.coupleName;
+            
+            const relationshipTypes = {
+                'standard': 'Relación romántica',
+                'writing': 'Pareja de escritura'
+            };
+            document.getElementById('relationshipType').textContent = relationshipTypes[currentUser.relationshipType] || currentUser.relationshipType;
+            document.getElementById('editRelationshipType').value = currentUser.relationshipType;
+            
+            const joinDate = new Date(currentUser.joinDate);
+            document.getElementById('joinDate').textContent = joinDate.toLocaleDateString('es-ES', {
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric'
+            });
+            
+            // Calcular días juntos
+            const today = new Date();
+            const diffTime = Math.abs(today - joinDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            document.getElementById('daysTogether').textContent = `${diffDays} días`;
+            
+            // Cargar avatar
+            if (currentUser.avatar) {
+                document.getElementById('avatarPreview').src = currentUser.avatar;
+            }
+            
+            // Subir avatar
+            document.getElementById('avatarUpload').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const avatarData = event.target.result;
+                        document.getElementById('avatarPreview').src = avatarData;
+                        currentUser.avatar = avatarData;
+                        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        
+                        // Actualizar en registeredUsers
+                        const registeredUsers = JSON.parse(localStorage.getItem('registeredUsers')) || [];
+                        const userIndex = registeredUsers.findIndex(u => u.email === currentUser.email);
+                        if (userIndex !== -1) {
+                            registeredUsers[userIndex].avatar = avatarData;
+                            localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Editar perfil
+            const editBtn = document.getElementById('editProfileBtn');
+            const saveBtn = document.getElementById('saveProfileBtn');
+            const coupleNameSpan = document.getElementById('coupleName');
+            const editCoupleNameInput = document.getElementById('editCoupleName');
+            const relationshipSpan = document.getElementById('relationshipType');
+            const editRelationshipSelect = document.getElementById('editRelationshipType');
+            
+            editBtn.addEventListener('click', function() {
+                coupleNameSpan.style.display = 'none';
+                editCoupleNameInput.style.display = 'inline-block';
+                relationshipSpan.style.display = 'none';
+                editRelationshipSelect.style.display = 'inline-block';
+                editBtn.style.display = 'none';
+                saveBtn.style.display = 'block';
+            });
+            
+            saveBtn.addEventListener('click', function() {
+                const newCoupleName = editCoupleNameInput.value;
+                const newRelationshipType = editRelationshipSelect.value;
+                
+                coupleNameSpan.textContent = newCoupleName;
+                relationshipSpan.textContent = relationshipTypes[newRelationshipType] || newRelationshipType;
+                document.getElementById('profileTitle').textContent = newCoupleName;
+                
+                coupleNameSpan.style.display = 'inline';
+                editCoupleNameInput.style.display = 'none';
+                relationshipSpan.style.display = 'inline';
+                editRelationshipSelect.style.display = 'none';
+                editBtn.style.display = 'block';
+                saveBtn.style.display = 'none';
+                
+                // Actualizar sessionStorage
+                currentUser.coupleName = newCoupleName;
+                currentUser.relationshipType = newRelationshipType;
+                sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                // Actualizar localStorage
+                const registeredUsers = JSON.parse(localStorage.getItem('registeredUsers')) || [];
+                const userIndex = registeredUsers.findIndex(u => u.email === currentUser.email);
+                if (userIndex !== -1) {
+                    registeredUsers[userIndex].coupleName = newCoupleName;
+                    registeredUsers[userIndex].relationshipType = newRelationshipType;
+                    localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+                }
+            });
+            
+            // Triple clic para reset demo
+            const logo = document.getElementById('logo');
+            logo.addEventListener('click', function() {
+                clickCount++;
+                clearTimeout(clickTimeout);
+                clickTimeout = setTimeout(() => { clickCount = 0; }, 500);
+                
+                if (clickCount === 3) {
+                    document.getElementById('resetDemo').style.display = 'block';
+                    clickCount = 0;
+                }
+            });
+            
+            // Resetear todos los datos
+            document.getElementById('resetAllBtn').addEventListener('click', function() {
+                if (confirm('⚠️ ¿Estás seguro? Esto borrará TODOS los datos de usuarios, historias y configuraciones. Esta acción no se puede deshacer.')) {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.href = 'register.html';
+                }
+            });
+            
+            // Logout
+            document.getElementById('logoutBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                sessionStorage.removeItem('currentUser');
+                window.location.href = 'index.html';
+            });
+        });
+    </script>
+</body>
+</html>
